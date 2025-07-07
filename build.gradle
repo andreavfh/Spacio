@@ -1,0 +1,53 @@
+import java.time.LocalDate
+
+plugins {
+    id 'application'
+    id 'java'
+    id 'com.github.johnrengelman.shadow' version '7.1.2'
+}
+
+group 'net.redsierra'
+version '3.0-release'
+mainClassName = 'net.redsierra.Spacio.Spacio'
+
+repositories {
+    mavenCentral()
+    maven {
+        url 'https://m2.dv8tion.net/releases'
+    }
+}
+
+dependencies {
+    implementation("net.dv8tion:JDA:5.0.0-beta.19")
+    implementation('ch.qos.logback:logback-classic:1.4.12')
+    implementation 'org.reflections:reflections:0.10.2'
+    implementation group: 'com.googlecode.json-simple', name: 'json-simple', version: '1.1'
+    implementation 'com.sedmelluq:lavaplayer:1.3.78'
+    implementation 'org.mongodb:mongodb-driver-sync:4.8.1'
+    implementation group: 'org.openjdk.nashorn', name: 'nashorn-core', version: '15.4'
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'net.redsierra.Spacio.Spacio'
+        }
+    }
+shadowJar {
+
+    String str = "${getBaseName()}-${LocalDate.now().year}-${version}.jar";
+    manifest {
+        attributes 'Main-Class': 'net.redsierra.Spacio.Spacio'
+    }
+    archiveBaseName.set('Spacio')
+    archiveVersion.set('3.0')
+    archiveFileName.set(str)
+}
+
+sourceSets {
+    main {
+        resources {
+            srcDirs = ['src/main/resources']
+        }
+    }
+
+}
