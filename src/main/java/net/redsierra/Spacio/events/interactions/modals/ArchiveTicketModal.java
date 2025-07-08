@@ -27,7 +27,7 @@ public class ArchiveTicketModal extends ListenerAdapter {
                 channel.getManager().setTopic("This ticket has been archived.").queue();
                 EmbedBuilder embed = new EmbedBuilder()
                         .setTitle("Ticket Archived")
-                        .setAuthor("Ticket sYSTEM", null, event.getGuild().getSelfMember().getAvatarUrl())
+                        .setAuthor("Ticket System", null, event.getGuild().getSelfMember().getAvatarUrl())
                         .setDescription("This ticket has been archived by " + event.getUser().getAsMention() + ".\n" +
                                 "**Ticket ID** " + ticketId + "\n" )
                         .setColor(new BotConfig().getSystemColor());

@@ -18,6 +18,11 @@ public class EditTicket extends Command {
     public void execute(SlashCommandInteraction commandEvent) {
         SlashCommandInteractionEvent event = commandEvent.event();
 
+        if (!event.getChannel().getName().startsWith("ticket-")) {
+            event.reply("This command can only be used in a ticket channel.").setEphemeral(true).queue();
+            return;
+        }
+
         event.reply("Please select an option below to edit your ticket")
                 .addActionRow(
                         StringSelectMenu.create("ticket-edit")
