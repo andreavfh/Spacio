@@ -34,9 +34,17 @@ public class Report extends Command {
         Member member = event.getGuild().getMemberById(user.getId());
         BotConfig config = new BotConfig();
         GuildConfig guildConfig = config.getGuildConfig(event.getGuild());
+        net.dv8tion.jda.api.interactions.commands.Command command = event.getGuild().retrieveCommands()
+                .complete()
+                .stream()
+                .filter(cmd -> cmd.getName().equals("setupchannels"))
+                .findFirst()
+                .orElse(null);
+
+        String mention = (command != null ? command.getAsMention() : "`/setupchannels`");
 
         if(guildConfig.getReportsChannel() == null) {
-            event.reply("The reports channel has not been set up yet, please setup using '/setreportschannel'").setEphemeral(true).queue();
+            event.reply("The reports channel has not been set up yet, please setup using " + mention).setEphemeral(true).queue();
             return;
         }
 
@@ -44,6 +52,7 @@ public class Report extends Command {
             event.reply("You can't report yourself.").setEphemeral(true).queue();
             return;
         }
+
         if (user.isBot()) {
             event.reply("You can't report a bot. If you think it's a problem, contact the server administrators.")
                     .setEphemeral(true)

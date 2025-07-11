@@ -21,7 +21,7 @@ public class Warn extends Command {
     public void execute(SlashCommandInteraction ev) {
         SlashCommandInteractionEvent e = ev.event();
 
-                TextInput userId = TextInput.create("userid", "User ID", TextInputStyle.SHORT)
+                TextInput userId = TextInput.create("userid", "User Identifier", TextInputStyle.SHORT)
                         .setPlaceholder("The user id of the user to warn")
                         .build();
 
@@ -35,6 +35,7 @@ public class Warn extends Command {
                         .build();
 
                 e.replyModal(modal).queue();
+
             }
 
 }

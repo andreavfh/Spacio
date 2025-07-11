@@ -5,12 +5,14 @@ import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.interactions.InteractionHook;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.redsierra.Spacio.config.BotConfig;
 import net.redsierra.Spacio.events.SlashCommandInteraction;
 import net.redsierra.Spacio.events.interactions.Command;
 import net.redsierra.Spacio.util.InfractionLogger;
 import net.redsierra.Spacio.util.TimeParser;
+
 import java.time.Duration;
 import java.time.Instant;
 
@@ -24,69 +26,77 @@ public class Mute extends Command {
 
     @Override
     public void execute(SlashCommandInteraction commandEvent) {
-
         SlashCommandInteractionEvent event = commandEvent.event();
         Guild guild = event.getGuild();
-        OptionMapping option = event.getOption("user");
-        assert option != null;
-        Member member = option.getAsMember();
-        assert member != null;
+        Member member = event.getOption("user", null, OptionMapping::getAsMember);
+        String reason = event.getOption("reason", "No reason provided", OptionMapping::getAsString);
+        String rawTime = event.getOption("time", "5m", OptionMapping::getAsString); // Default: 5 minutes
 
-        if (member.getUser().isBot()) {
-            event.reply("You can't mute a bot.").setEphemeral(true).queue();
+        event.deferReply().setEphemeral(true).queue();
+        InteractionHook hook = event.getHook();
+
+        if (guild == null || member == null) {
+            hook.editOriginal("❌ Invalid guild or member.").queue();
             return;
         }
 
+        // bot validation
+
         if (member.hasPermission(Permission.MANAGE_CHANNEL)) {
-            event.reply("You can't mute a moderator.").setEphemeral(true).queue();
+            hook.editOriginal("🛑 You can't mute a moderator.").queue();
             return;
         }
 
         if (member.isTimedOut()) {
-            event.reply("This user is already muted. If you want to unmute it you can do so by running the unmute command")
-                    .setEphemeral(true)
-                    .queue();
+            hook.editOriginal("🔇 This user is already muted. Use `/unmute` to remove the timeout.").queue();
             return;
         }
 
-        OptionMapping option2 = event.getOption("time");
-        OptionMapping option3 = event.getOption("reason");
-        assert option3 != null;
-        assert guild != null;
-        String reason = option3.getAsString();
-
         try {
+            Duration duration = Duration.ofMillis(new TimeParser().parseToMillis(rawTime));
+            Instant until = Instant.now().plus(duration);
 
-            TimeParser parser = new TimeParser();
+            guild.timeoutFor(member, duration).reason(reason).queue();
 
-            Duration duration = (option2 == null) ? Duration.ofSeconds(60*5) : Duration.ofMillis(parser.parseToMillis(option2.getAsString()));
+            EmbedBuilder embed = new EmbedBuilder()
+                    .setAuthor(member.getUser().getGlobalName() + " muted", null, member.getUser().getAvatarUrl())
+                    .addField("Reason", reason, false)
+                    .addField("Until", "<t:" + until.getEpochSecond() + ":R>", false)
+                    .setTimestamp(Instant.now())
+                    .setColor(new BotConfig().getSystemColor())
+                    .setFooter("Muted by " + event.getUser().getGlobalName(), event.getUser().getAvatarUrl());
 
-            guild.timeoutFor(member, duration).queue();
+            event.getChannel().sendMessageEmbeds(embed.build()).queue();
+            hook.editOriginal("✅ User " + member.getAsMention() + " has been muted for " + rawTime + ".").queue();
 
-            long seconds = duration.getSeconds();
-            long HH = seconds / 3600;
-            long MM = (seconds % 3600) / 60;
-            long SS = seconds % 60;
+            // DM al usuario
+            member.getUser().openPrivateChannel().queue(privateChannel -> {
+                EmbedBuilder dmEmbed = new EmbedBuilder()
+                        .setTitle("🔇 You have been muted")
+                        .addField("Reason", reason, false)
+                        .addField("Until", "<t:" + until.getEpochSecond() + ":R>", false)
+                        .setColor(0xffaa00)
+                        .setTimestamp(Instant.now())
+                        .setFooter("Server: " + guild.getName());
 
-            String timeLeft = (HH > 0) ? HH + " hours, " + MM + " minutes, " + SS + " seconds" : (MM > 0 ? MM + " minutes, " + SS + " seconds" : SS + " seconds");
+                privateChannel.sendMessageEmbeds(dmEmbed.build()).queue();
+            }, failure -> {
+                // No se pudo mandar DM
+            });
 
-            event.replyEmbeds(
-                    new EmbedBuilder()
-                            .setAuthor(member.getUser().getGlobalName() + " muted", null, member.getUser().getAvatarUrl())
-                            .addField("Reason", reason, false)
-                            .addField("Time" , timeLeft, false)
-                            .setTimestamp(Instant.now())
-                            .setColor(new BotConfig().getSystemColor())
-                            .setFooter("Muted by " + event.getUser().getGlobalName(), event.getUser().getAvatarUrl())
-                            .build()
-            ).queue();
+            // Guardar en log
+            new InfractionLogger().createLog(
+                    member.getId(),
+                    reason,
+                    event.getUser().getId(),
+                    event.getId(),
+                    event.getChannel().getId(),
+                    "mute",
+                    guild
+            );
 
-            new InfractionLogger().createLog(member.getId(), reason, event.getUser().getId(), event.getId(), event.getChannel().getId(), "mute", guild);
-
-        } catch (IllegalArgumentException exception) {
-            event.reply("Invalid time format. Please use the following format: 1h 30m 10s").setEphemeral(true).queue();
-            exception.printStackTrace();
+        } catch (IllegalArgumentException e) {
+            hook.editOriginal("⏱️ Invalid time format. Use something like `10m`, `1h`, or `30s`.").queue();
         }
-
     }
 }

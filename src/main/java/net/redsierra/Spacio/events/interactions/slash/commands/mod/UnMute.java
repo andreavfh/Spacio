@@ -32,7 +32,7 @@ public class UnMute extends Command {
 
             event.replyEmbeds(
                     new EmbedBuilder()
-                            .setAuthor(member.getUser().getGlobalName() + " unmuted", null, member.getUser().getAvatarUrl())
+                            .setAuthor(member.getUser().getName() + " unmuted", null, member.getUser().getAvatarUrl())
                             .setTimestamp(Instant.now())
                             .setColor(new BotConfig().getSystemColor())
                             .setFooter("Powered by Spacio")

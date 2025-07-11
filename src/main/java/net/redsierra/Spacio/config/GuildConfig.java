@@ -51,6 +51,24 @@ public class GuildConfig {
         return List.of();
     }
 
+    public List<String> getBotChannels() {
+        List<String> keys = List.of(
+                ChannelKey.WELCOME.key(),
+                ChannelKey.REPORTS.key(),
+                ChannelKey.COMMANDS.key(),
+                ChannelKey.LOGS.key()
+        );
+
+        List<String> channels = new ArrayList<>();
+        for (String key : keys) {
+            String id = getChannelId(key);
+            if (id != null) channels.add(id);
+        }
+
+        return channels;
+    }
+
+
     @SuppressWarnings("unchecked")
     public List<Document> getUsers() {
         return (List<Document>) document.getOrDefault("users", new ArrayList<>());
