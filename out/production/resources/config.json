@@ -1,10 +1,10 @@
 {
   "version": {
-    "major": 3,
+    "major": 4,
     "minor": 0,
     "patch": 0,
     "build": 0,
-    "identifier": "beta",
+    "identifier": "major",
     "classifier": "PATCH"
   },
   "systemColor": "#c49070"
