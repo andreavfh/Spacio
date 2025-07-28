@@ -17,16 +17,19 @@ import java.util.List;
 
 public class Spacio {
 
-    public Logger logger = LoggerFactory.getLogger(Spacio.class);
-    private static ShardManager shardManager;
-    public static void main(String[] args) throws LoginException {
+    private static Spacio instance;
 
-        BotConfig config = new BotConfig();
-        String token = config.getBotToken();
+    private final Logger logger = LoggerFactory.getLogger(Spacio.class);
+    private final BotConfig botConfig;
+    private final ShardManager shardManager;
+
+    private Spacio() throws LoginException {
+        this.botConfig = new BotConfig();
+        String token = botConfig.getBotToken();
         List<ListenerAdapter> listeners = ListenerLoader.loadListeners("net.redsierra.Spacio.events");
 
-        shardManager = DefaultShardManagerBuilder.createDefault(token)
-                .setShardsTotal(config.getShardCount())
+        this.shardManager = DefaultShardManagerBuilder.createDefault(token)
+                .setShardsTotal(botConfig.getShardCount())
                 .enableIntents(EnumSet.of(
                         GatewayIntent.GUILD_MEMBERS,
                         GatewayIntent.MESSAGE_CONTENT
@@ -36,10 +39,33 @@ public class Spacio {
                 .setActivity(Activity.listening("DROGA - Mora & C. Tangana"))
                 .addEventListeners(listeners.toArray())
                 .build();
-
     }
 
-    public static ShardManager getShardManager() {
+    public static void main(String[] args) {
+        try {
+            instance = new Spacio();
+        } catch (LoginException e) {
+            LoggerFactory.getLogger(Spacio.class).error("Failed to login bot", e);
+            System.exit(1);
+        }
+    }
+
+    public static Spacio getInstance() {
+        if (instance == null) {
+            throw new IllegalStateException("Spacio has not been initialized yet. Call main() first.");
+        }
+        return instance;
+    }
+
+    public ShardManager getShardManager() {
         return shardManager;
+    }
+
+    public BotConfig getBotConfig() {
+        return botConfig;
+    }
+
+    public Logger getLogger() {
+        return logger;
     }
 }

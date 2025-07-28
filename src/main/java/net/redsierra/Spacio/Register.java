@@ -74,6 +74,6 @@ public class Register {
                     ).queue();
         }
 
-        new Spacio().logger.info("Commands successfully registered on all guilds.");
+        Spacio.getInstance().getLogger().info("Commands successfully registered on all guilds.");
     }
 }

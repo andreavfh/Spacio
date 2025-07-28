@@ -63,10 +63,10 @@ public class Ready extends ListenerAdapter {
                 Command command = clazz.getDeclaredConstructor().newInstance();
                 SlashCommandHandler.registerCommand(command.getName(), command);
             } catch (Exception e) {
-                new Spacio().logger.warn("Failed to register command: " + clazz.getSimpleName(), e);
+                Spacio.getInstance().getLogger().warn("Failed to register command: " + clazz.getSimpleName(), e);
             }
         }
 
-        new Spacio().logger.info("Successfully registered " + SlashCommandHandler.getCommands().size() + " commands.");
+        Spacio.getInstance().getLogger().info("Successfully registered " + SlashCommandHandler.getCommands().size() + " commands.");
     }
 }

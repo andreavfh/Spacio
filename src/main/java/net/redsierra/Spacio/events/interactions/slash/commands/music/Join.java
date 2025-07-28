@@ -50,7 +50,7 @@ public class Join extends Command {
                             event.reply("Joined " + channel.getAsMention()).setEphemeral(true).queue();
 
                             String str = "Joined " + channel.getName() + " ("+channel.getId()+") in guild " + guild.getName() + " ("+guild.getId()+")";
-                            new Spacio().logger.info(str);
+                            Spacio.getInstance().getLogger().info(str);
                         }
 
                    } else {

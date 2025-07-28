@@ -7,7 +7,7 @@ plugins {
 }
 
 group 'net.redsierra'
-version '3.0-release'
+version '4.2-release'
 mainClassName = 'net.redsierra.Spacio.Spacio'
 
 repositories {

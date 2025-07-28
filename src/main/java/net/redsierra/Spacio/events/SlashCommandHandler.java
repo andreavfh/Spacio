@@ -17,13 +17,13 @@ public class SlashCommandHandler extends ListenerAdapter {
     public static void registerCommand(String name, Command command) {
 
         commands.put(name, command);
-        new Spacio().logger.info("Registered command " + name);
+        Spacio.getInstance().getLogger().info("Registered command " + name);
     }
 
     @Override
     public void onSlashCommandInteraction(@NotNull SlashCommandInteractionEvent event) {
 
-        Spacio bot = new Spacio();
+        Spacio bot = Spacio.getInstance();
         BotConfig config;
         config = new BotConfig();
 
@@ -52,7 +52,7 @@ public class SlashCommandHandler extends ListenerAdapter {
             Command command = commands.get(event.getName());
             command.execute(new SlashCommandInteraction(event));
 
-            bot.logger.info("Attempting to execute command '{}' from user {} ({}) in guild {} ({})",
+            bot.getLogger().info("Attempting to execute command '{}' from user {} ({}) in guild {} ({})",
                     event.getName(),
                     event.getUser().getName(),
                     event.getUser().getId(),
@@ -77,7 +77,7 @@ public class SlashCommandHandler extends ListenerAdapter {
             }
             return commandsByCategory;
         } catch (Exception e) {
-            new Spacio().logger.error("Error while getting commands by category: " + e.getMessage());
+            Spacio.getInstance().getLogger().error("Error while getting commands by category: " + e.getMessage());
             throw new RuntimeException(e);
         }
     }

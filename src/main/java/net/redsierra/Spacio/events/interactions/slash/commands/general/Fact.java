@@ -73,7 +73,7 @@ public class Fact extends Command {
                 return (String) object.get("fact");
 
             } else {
-                new Spacio().logger.error("GET request not worked");
+                Spacio.getInstance().getLogger().error("GET request not worked");
             }
         } catch (Exception exception) {
             exception.printStackTrace();

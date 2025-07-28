@@ -1,105 +1,105 @@
 package net.redsierra.Spacio.events;
 
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import net.dv8tion.jda.api.entities.Guild;
 import net.redsierra.Spacio.Spacio;
 import net.redsierra.Spacio.config.BotConfig;
 import net.redsierra.Spacio.config.GuildConfig;
 import org.bson.Document;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class MessageReceived extends ListenerAdapter {
 
-    private static final int COOLDOWN_PERIOD = 60; // segundos
+    private static final int COOLDOWN_SECONDS = 60;
+    private static final int XP_MIN_GAIN = 25;
+    private static final int XP_MAX_GAIN = 30;
+    private static final String USERS_KEY = "users";
+    private static final String COLLECTION_NAME = "guilds";
+
     private final Map<String, Instant> xpCooldown = new HashMap<>();
 
     @Override
     public void onMessageReceived(@NotNull MessageReceivedEvent event) {
         if (!event.isFromGuild() || event.getAuthor().isBot()) return;
 
-        Spacio bot = new Spacio();
-        Logger logger = bot.logger;
-        BotConfig config = new BotConfig();
-        Guild guild = event.getGuild();
+        BotConfig botConfig = Spacio.getInstance().getBotConfig();
 
-        // Carga configuración específica del guild
+        final Guild guild = event.getGuild();
+        final String channelId = event.getChannel().getId();
+        final String userId = event.getAuthor().getId();
+
         GuildConfig guildConfig;
         try {
-            guildConfig = new GuildConfig(guild, config.getDatabase().getCollection("guilds"));
+            guildConfig = new GuildConfig(guild, botConfig.getDatabase().getCollection(COLLECTION_NAME));
         } catch (NoSuchElementException e) {
-            // Si no hay configuración para el guild, no hacer nada
-            return;
+            return; // Config no existe
         }
 
-        // Verifica que el canal del mensaje esté en los canales XP configurados
-        if (!guildConfig.getXPChannels().contains(event.getChannel().getId())) return;
+        if (!guildConfig.getXPChannels().contains(channelId)) return;
+
+        Instant cooldownEnd = xpCooldown.get(userId);
+        if (cooldownEnd != null && cooldownEnd.isAfter(Instant.now())) return;
+        xpCooldown.put(userId, Instant.now().plusSeconds(COOLDOWN_SECONDS));
 
         List<Document> users = guildConfig.getUsers();
-        String userId = event.getAuthor().getId();
-        Document user = null;
+        Document user = users.stream()
+                .filter(doc -> userId.equals(doc.getString("userId")))
+                .findFirst()
+                .orElse(null);
 
-        // Busca usuario en la lista
-        for (Document doc : users) {
-            if (userId.equals(doc.getString("userId"))) {
-                user = doc;
-                break;
-            }
-        }
-
-        // Si no existe, crea el documento de usuario
+        boolean isNewUser = false;
         if (user == null) {
             user = new Document("userId", userId)
                     .append("xp", 0)
-                    .append("level", 0)
-                    .append("avatar_url", event.getAuthor().getAvatarUrl())
-                    .append("name", event.getAuthor().getName());
+                    .append("level", 0);
             users.add(user);
-            guildConfig.getGuildDocument().put("users", users);
+            isNewUser = true;
+        }
+
+        updateUserMeta(user, event);
+        boolean leveledUp = updateXPAndLevel(user, event);
+
+        // Persist only if user is new or leveled up
+        if (isNewUser || leveledUp) {
+            guildConfig.getGuildDocument().put(USERS_KEY, users);
             guildConfig.save();
-            xpCooldown.put(userId, Instant.now().plusSeconds(COOLDOWN_PERIOD));
-            return;
         }
+    }
 
-        // Check cooldown
-        Instant cooldownExpiry = xpCooldown.get(userId);
-        if (cooldownExpiry != null && cooldownExpiry.isAfter(Instant.now())) {
-            return;
-        }
-        xpCooldown.put(userId, Instant.now().plusSeconds(COOLDOWN_PERIOD));
-
-        // Actualiza XP y nivel
-        int currentLevel = user.getInteger("level");
-        int currentXP = user.getInteger("xp");
-        int requiredXP = (currentLevel + 1) * 350;
-        int xpGained = new Random().nextInt(6) + 25; // Entre 25 y 30 inclusive
-        int totalXP = currentXP + xpGained;
-
-        user.put("xp", totalXP);
+    private void updateUserMeta(Document user, MessageReceivedEvent event) {
         user.put("avatar_url", event.getAuthor().getAvatarUrl());
         user.put("name", event.getAuthor().getName());
+    }
 
-        if (totalXP >= requiredXP) {
+    private boolean updateXPAndLevel(Document user, MessageReceivedEvent event) {
+        int currentXP = user.getInteger("xp", 0);
+        int currentLevel = user.getInteger("level", 0);
+        int gainedXP = ThreadLocalRandom.current().nextInt(XP_MIN_GAIN, XP_MAX_GAIN + 1);
+        int newXP = currentXP + gainedXP;
+        int requiredXP = (currentLevel + 1) * 350;
+
+        if (newXP >= requiredXP) {
             user.put("level", currentLevel + 1);
             user.put("xp", 0);
-            event.getChannel().sendMessage("WOW " + event.getAuthor().getAsMention() +
-                    "! You have leveled up to level " + (currentLevel + 1) + "!").queue();
-            logger.info("User {} has leveled up to level {}!", event.getAuthor().getGlobalName(), currentLevel + 1);
-        }
 
-        // Actualiza usuario en la lista
-        for (int i = 0; i < users.size(); i++) {
-            if (userId.equals(users.get(i).getString("userId"))) {
-                users.set(i, user);
-                break;
-            }
-        }
+            event.getChannel().sendMessage(
+                    String.format("🎉 %s has leveled up to level %d!",
+                            event.getAuthor().getAsMention(),
+                            currentLevel + 1)
+            ).queue();
 
-        guildConfig.getGuildDocument().put("users", users);
-        guildConfig.save();
+            Spacio.getInstance().getLogger().info("User {} leveled up to {}",
+                    event.getAuthor().getGlobalName(), currentLevel + 1);
+
+            return true;
+        } else {
+            user.put("xp", newXP);
+            return true;
+        }
     }
 }
